@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Animated Tree</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: lightgreen;
+      display: flex;
+      justify-content: center;
+      font-family: Arial;
+    }
+
+    #stage {
+      width: 1920px;
+      height: 1080px;
+      background: lightgreen;
+      position: relative;
+      overflow: auto;
+    }
+
+    .node {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 3px solid #2f49c6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      background: white;
+      font-weight: bold;
+      color: #ff0000;
+      background-color: lightblue;
+      cursor: pointer;
+
+      transition:
+        transform .35s ease,
+        opacity .35s ease;
+    }
+
+    .node.hidden {
+      transform: scale(.2);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    svg {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    .controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+    }
+
+    button {
+      padding: 8px 12px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="stage">
+    <div class="controls">
+      <button onclick="expandAll()">Expand All</button>
+      <button onclick="collapseAll()">Collapse All</button>
+    </div>
+
+    <svg id="lines" width="1920" height="1080"></svg>
+  </div>
+
+  <script>
+    const treeData = {
+      name: "A",
+      children: [
+        {
+          name: "B",
+          children: [
+            {
+              name: "D",
+              children: [
+                { name: "H" },
+                { name: "I" },
+                { name: "K" }
+              ]
+            },
+            {
+              name: "E",
+              children: [
+                { name: "J" },
+                { name: "L" }
+              ]
+            }
+          ]
+        },
+        {
+          name: "C",
+          children: [
+            {
+              name: "F",
+              children: [
+                { name: "M" },
+                { name: "N" }
+              ]
+            },
+            {
+              name: "G",
+              children: [
+                {
+                  name: "O",
+                  children: [
+                    { name: "Q" },
+                    { name: "R" },
+                    { name: "S" }
+                  ]
+                },
+                { name: "P" }
+              ]
+            },
+          ]
+        }
+      ]
+    };
+
+    const stage = document.getElementById("stage");
+    const svg = document.getElementById("lines");
+    const levelHeight = 180;
+    const nodeSize = 60;
+    const nodeMap = new Map();
+
+    function setCollapseState(node, state) {
+      node.collapsed = state;
+      if (node.children) {
+        node.children.forEach(child => {
+          setCollapseState(child, state);
+        });
+      }
+    }
+
+    function layout(node, depth = 0, xMin = 0, xMax = 1920) {
+      const x = (xMin + xMax) / 2;
+      const y = 120 + depth * levelHeight;
+      node.x = x;
+      node.y = y;
+      if (node.children && !node.collapsed) {
+        const step = (xMax - xMin) / node.children.length;
+        node.children.forEach((child, i) => {
+          layout(
+            child,
+            depth + 1,
+            xMin + i * step,
+            xMin + (i + 1) * step
+          );
+        });
+      }
+    }
+
+    function drawNode(node) {
+      let div = nodeMap.get(node);
+      if (!div) {
+        div = document.createElement("div");
+        div.className = "node";
+        div.onclick = (e) => {
+          e.stopPropagation();
+          node.collapsed = !node.collapsed;
+          renderTree();
+        };
+        nodeMap.set(node, div);
+        stage.appendChild(div);
+      }
+
+      div.innerText = node.name;
+      div.style.left = (node.x - nodeSize / 2) + "px";
+      div.style.top = (node.y - nodeSize / 2) + "px";
+      div.classList.remove("hidden");
+    }
+
+
+
+    function drawLine(x1, y1, x2, y2) {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", x1);
+      line.setAttribute("y1", y1);
+      line.setAttribute("x2", x2);
+      line.setAttribute("y2", y2);
+      line.setAttribute("stroke", "#2f49c6");
+      line.setAttribute("stroke-width", "3");
+      svg.appendChild(line);
+    }
+
+    function render(node) {
+      drawNode(node);
+      if (node.children && !node.collapsed) {
+        node.children.forEach(child => {
+          drawLine(node.x, node.y, child.x, child.y);
+          render(child);
+        });
+      } else if (node.children) {
+        hideChildren(node);
+      }
+    }
+
+    function hideChildren(node) {
+      node.children.forEach(child => {
+        const div = nodeMap.get(child);
+        if (div) {
+          div.classList.add("hidden");
+        }
+        if (child.children) {
+          hideChildren(child);
+        }
+      });
+    }
+
+    function clearLines() {
+      while (svg.firstChild) {
+        svg.removeChild(svg.firstChild);
+      }
+    }
+
+    function renderTree() {
+      clearLines();
+      layout(treeData);
+      render(treeData);
+    }
+
+    function collapseAll() {
+      setCollapseState(treeData, true);
+      renderTree();
+    }
+
+    function expandAll() {
+      setCollapseState(treeData, false);
+      renderTree();
+    }
+
+    expandAll();
+  </script>
+</body>
+
+</html>
